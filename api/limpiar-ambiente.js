@@ -29,9 +29,9 @@ const positivePrompt = "Preserve the exact same room structure, identical perspe
 
         const requestBody = [
             {
-           "taskType": "imageInference",
+         "taskType": "imageInference",
                 "taskUUID": taskUUID,
-                "model": "runware:400@4", // ID exacto de FLUX.2 Klein 4B
+                "model": "prunaai:2@1",
                 "positivePrompt": positivePrompt,
                 "inputs": {
                     "referenceImages": [imageBase64]
