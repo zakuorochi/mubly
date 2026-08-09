@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     const RUNWARE_API_KEY = process.env.RUNWARE_API_KEY;
 
     if (!RUNWARE_API_KEY) {
-        return res.status(500).json({ error: 'La API Key de Runware não está configurada en el servidor' });
+        return res.status(500).json({ error: 'La API Key de Runware no está configurada en el servidor' });
     }
 
     try {
@@ -18,22 +18,26 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'No se envió ninguna imagen' });
         }
 
-        const positivePrompt = "Preserve the exact same room structure, identical perspective, and original lighting. Remove the arcade machine, remove cables, and remove all furniture. Leave a completely bare white wall and plain wooden floor. Do not alter the architecture or the hallway.";
+        // PROMPT POSITIVO: Enfocado en mantener la base y solo "limpiar"
+        const positivePrompt = "A high fidelity edit of the original room. Preserve the exact same architectural structure, identical perspective, original shadows, hallway, and original lighting. Remove the arcade machine, remove all cables, and remove any furniture. Leave only a completely bare white wall and a clean, empty wooden floor.";
+        
+        // PROMPT NEGATIVO: Lo que la IA tiene PROHIBIDO hacer
+        const negativePrompt = "Do not alter architecture, do not change perspective, do not modify the hallway, do not change the floor texture, do not add new objects, do not change lighting, do not distort walls, no hallucinated furniture.";
         
         const taskUUID = crypto.randomUUID();
 
-        // Estructura actualizada para FLUX.2 [klein] 4B según el nuevo esquema
         const requestBody = [
             {
                 "taskType": "imageInference",
                 "taskUUID": taskUUID,
-                "model": "runware:400@4", // ID exacto de FLUX.2 Klein 4B
+                "model": "runware:400@4", 
                 "positivePrompt": positivePrompt,
+                "negativePrompt": negativePrompt, // Añadido para controlar a FLUX
                 "inputs": {
                     "referenceImages": [imageBase64]
                 },
-                "steps": 4,             // Óptimo para este modelo destilado de 4 pasos
-                "CFGScale": 3.5,        // Escala de guía recomendada
+                "steps": 4,             
+                "CFGScale": 4.5,        // Ligeramente más alto para que obedezca el prompt negativo con más fuerza
                 "outputType": "URL",
                 "outputFormat": "JPG",
                 "outputQuality": 95,
