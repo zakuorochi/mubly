@@ -1,12 +1,10 @@
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
-    // Solo permitimos peticiones POST
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Método no permitido' });
     }
 
-    // Obtenemos la API Key de las Variables de Entorno de Vercel
     const RUNWARE_API_KEY = process.env.RUNWARE_API_KEY;
 
     if (!RUNWARE_API_KEY) {
@@ -20,33 +18,27 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'No se envió ninguna imagen' });
         }
 
-        // PROMPT POSITIVO: Al ser un modelo "Instruction-based", le damos órdenes directas.
+        // Prompts directivos para Qwen-Image-Edit
         const positivePrompt = "Remove the arcade machine, remove all cables, and remove all furniture. Erase these objects perfectly to leave the room completely empty, exposing the bare white wall and wooden floor behind them.";
-        
-        // PROMPT NEGATIVO: Lo que no debe tocar.
         const negativePrompt = "Do not alter the architecture, do not change the perspective, do not modify the hallway, do not add any new objects, do not distort lines.";
         
-        // Generar UUID
         const taskUUID = crypto.randomUUID();
 
-        // Estructura actualizada para Qwen-Image-Edit según el esquema
+        // Estructura limpia y corregida con width y height integrados
         const requestBody = [
-            {
-           const requestBody = [
-          const requestBody = [
             {
                 "taskType": "imageInference",
                 "taskUUID": taskUUID,
-                "model": "runware:108@20", 
+                "model": "runware:108@20",
                 "positivePrompt": positivePrompt,
                 "negativePrompt": negativePrompt,
-                "width": 1024,   // <-- NÚMERO SIN COMILLAS
-                "height": 1024,  // <-- NÚMERO SIN COMILLAS
+                "width": 1024,
+                "height": 1024,
                 "inputs": {
                     "referenceImages": [imageBase64]
                 },
-                "steps": 8,             
-                "CFGScale": 7,          
+                "steps": 8,
+                "CFGScale": 7,
                 "outputType": "URL",
                 "outputFormat": "JPG",
                 "outputQuality": 95,
@@ -54,7 +46,6 @@ export default async function handler(req, res) {
             }
         ];
 
-        // Llamada a Runware desde el servidor
         const runwareResponse = await fetch('https://api.runware.ai/v1', {
             method: 'POST',
             headers: {
@@ -71,12 +62,10 @@ export default async function handler(req, res) {
 
         const responseData = await runwareResponse.json();
 
-        // Extraer la imagen del resultado
         if (responseData.data && responseData.data.length > 0) {
             const resultTask = responseData.data[0];
             const resultImage = resultTask.imageURL || resultTask.dataURI || resultTask.base64Data;
             
-            // Devolver la imagen al frontend de Mubly
             return res.status(200).json({ imageUrl: resultImage });
         } else {
             throw new Error("No se recibió imagen de Runware");
