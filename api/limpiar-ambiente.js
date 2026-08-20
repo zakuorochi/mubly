@@ -19,9 +19,10 @@ export default async function handler(req, res) {
         }
 
         // Prompts directivos para Qwen-Image-Edit
-      const positivePrompt = "Remove all movable objects, tools, cables, and furniture from the room. Erase these objects perfectly to leave the space completely empty, but STRICTLY preserve the existing architectural features, original wall textures, and original floor intact. Do not turn the image into a blank canvas.";
-        const negativePrompt = "Do not alter the architecture, do not change the perspective, do not modify the hallway, do not add any new objects, do not distort lines.";
-        
+  // Actualiza la sección de prompts en api/limpiar-ambiente.js
+const positivePrompt = "Keep the original room layout, walls, floor, and lighting exactly as they are. This is an empty room renovation task. Carefully remove the computer desk, the arcade machine, and all clutter. In the areas where items were removed, seamlessly reconstruct the background wall and floor textures to match the surrounding area. Keep the room identical, just empty.";
+
+const negativePrompt = "Do not alter the architecture, do not add new objects, do not change the wall color, do not modify the floor texture, do not create a blank white image, do not hallucinate new furniture.";
         const taskUUID = crypto.randomUUID();
 
         // Estructura limpia y corregida con width y height integrados
