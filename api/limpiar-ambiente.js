@@ -19,7 +19,7 @@ export default async function handler(req, res) {
         }
 
         // Prompts directivos para Qwen-Image-Edit
-        const positivePrompt = "Remove the arcade machine, remove all cables, and remove all furniture. Erase these objects perfectly to leave the room completely empty, exposing the bare white wall and wooden floor behind them.";
+      const positivePrompt = "Remove all movable objects, tools, cables, and furniture from the room. Erase these objects perfectly to leave the space completely empty, but STRICTLY preserve the existing architectural features, original wall textures, and original floor intact. Do not turn the image into a blank canvas.";
         const negativePrompt = "Do not alter the architecture, do not change the perspective, do not modify the hallway, do not add any new objects, do not distort lines.";
         
         const taskUUID = crypto.randomUUID();
