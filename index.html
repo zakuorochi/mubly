@@ -591,20 +591,22 @@
         // --- LÓGICA DE LA IA (NUEVOS BOTONES) ---
 
         // Función auxiliar para "fusionar" el fondo y los stickers en una sola imagen (Para 'Conviértelo')
-        function generarImagenCompuesta() {
+       function generarImagenCompuesta() {
             return new Promise((resolve, reject) => {
                 const tempCanvas = document.createElement('canvas');
                 const ctx = tempCanvas.getContext('2d');
                 
+                // Proxy para evitar el bloqueo CORS de imágenes externas
+                const proxyUrl = "https://corsproxy.io/?"; 
+                
                 const bgImg = new Image();
-                bgImg.crossOrigin = "anonymous"; // Evita problemas de CORS al leer la imagen externa
+                bgImg.crossOrigin = "anonymous"; 
                 
                 bgImg.onload = () => {
                     tempCanvas.width = bgImg.width;
                     tempCanvas.height = bgImg.height;
                     ctx.drawImage(bgImg, 0, 0);
                     
-                    // Calculamos la proporción entre el div del navegador y la resolución real de la foto
                     const scaleX = bgImg.width / canvas.clientWidth;
                     const scaleY = bgImg.height / canvas.clientHeight;
 
@@ -616,7 +618,6 @@
                         return;
                     }
 
-                    // Dibujamos cada sticker en sus coordenadas exactas
                     stickers.forEach((imgTag) => {
                         const parentDiv = imgTag.parentElement;
                         const sImg = new Image();
@@ -634,15 +635,17 @@
                             loadedCount++;
                             if (loadedCount === stickers.length) resolve(tempCanvas.toDataURL('image/jpeg', 0.9));
                         };
-                        sImg.onerror = () => { // Si falla una imagen, la omitimos pero continuamos
+                        sImg.onerror = () => { 
                             loadedCount++;
                             if (loadedCount === stickers.length) resolve(tempCanvas.toDataURL('image/jpeg', 0.9));
                         };
-                        sImg.src = imgTag.src;
+                        // Pasamos la ruta del sticker por el proxy
+                        sImg.src = proxyUrl + encodeURIComponent(imgTag.src);
                     });
                 };
                 bgImg.onerror = reject;
-                bgImg.src = backgroundActualUrl;
+                // Pasamos la ruta del fondo por el proxy
+                bgImg.src = proxyUrl + encodeURIComponent(backgroundActualUrl);
             });
         }
 
