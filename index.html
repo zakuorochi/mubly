@@ -685,16 +685,18 @@
         });
 
         // 2. BOTÓN "RECOMIÉNDAME" (La IA diseña la distribución)
-        btnRecomendar.addEventListener('click', async () => {
+      btnRecomendar.addEventListener('click', async () => {
             btnRecomendar.innerHTML = '⏳ Diseñando...';
             btnRecomendar.disabled = true;
             btnConvertir.disabled = true;
             canvas.style.filter = 'blur(4px)';
 
             try {
-                // Recopilamos los nombres de los stickers actuales
+                // Recopilamos los nombres Y LAS IMÁGENES de los stickers actuales
                 const stickersNodes = canvas.querySelectorAll('div[data-mueble-name]');
                 const nombresMuebles = Array.from(stickersNodes).map(el => el.dataset.muebleName);
+                // ESTA ES LA LÍNEA NUEVA:
+                const imagenesExtraidas = Array.from(stickersNodes).map(el => el.querySelector('img').src);
 
                 if(nombresMuebles.length === 0) {
                     alert("Añade al menos un mueble de catálogo al lienzo para que el experto te recomiende una distribución.");
@@ -704,10 +706,10 @@
                 const response = await fetch('/api/recomendar-espacio', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    // Enviamos la habitación tal cual está, y la lista de nombres para que la IA decida dónde ponerlos
                     body: JSON.stringify({ 
                         imageBase64: backgroundActualUrl,
-                        mueblesSeleccionados: nombresMuebles 
+                        mueblesSeleccionados: nombresMuebles,
+                        imagenesMuebles: imagenesExtraidas // AHORA ENVIAMOS LAS FOTOS
                     })
                 });
 
