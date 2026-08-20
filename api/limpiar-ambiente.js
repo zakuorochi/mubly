@@ -32,11 +32,15 @@ export default async function handler(req, res) {
         // Estructura actualizada para Qwen-Image-Edit según el esquema
         const requestBody = [
             {
+           const requestBody = [
+            {
                 "taskType": "imageInference",
                 "taskUUID": taskUUID,
-                "model": "runware:108@20", // ID exacto de Qwen-Image-Edit
+                "model": "runware:108@20", 
                 "positivePrompt": positivePrompt,
                 "negativePrompt": negativePrompt,
+                "width": 1024,   // <--- AÑADE ESTO
+                "height": 768,   // <--- AÑADE ESTO
                 "inputs": {
                     "referenceImages": [imageBase64]
                 },
