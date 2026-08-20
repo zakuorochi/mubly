@@ -12,36 +12,46 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Recibimos la foto de la habitación limpia y la lista de muebles que eligió el usuario
-        const { imageBase64, mueblesSeleccionados } = req.body;
+        // Ahora recibimos la lista de nombres Y TAMBIÉN las imágenes de los muebles
+        const { imageBase64, mueblesSeleccionados, imagenesMuebles } = req.body;
 
         if (!imageBase64) {
             return res.status(400).json({ error: 'No se envió la imagen del ambiente' });
         }
 
-        // Construimos un texto dinámico basado en los muebles que el usuario seleccionó del catálogo
         const listaNombres = mueblesSeleccionados && mueblesSeleccionados.length > 0 
             ? mueblesSeleccionados.join(', ') 
             : 'modern interior furniture pieces';
 
-        const positivePrompt = `As an expert interior designer, generate a photorealistic interior design render of this exact empty room. Harmoniously integrate the following items: ${listaNombres}. Arrange them professionally following interior design principles, optimal spacing, natural perspective, correct shadows, and matching room lighting. Maintain the original background walls and floor structure.`;
+        // PROMPT SÚPER ESTRICTO
+        const positivePrompt = `As an expert interior designer, generate a photorealistic interior design render of this exact room. You MUST strictly design using ONLY these specific items: ${listaNombres}. Arrange them professionally with optimal spacing and natural perspective. Maintain the EXACT original background walls, windows, and floor structure. DO NOT invent or add any extra furniture.`;
         
-        const negativePrompt = "Cluttered layout, distorted furniture, low quality, bad perspective, floating objects, mismatched lighting, altering room architecture drastically.";
+        const negativePrompt = "Do not add unrequested furniture, do not hallucinate objects, cluttered layout, distorted furniture, floating objects, altering room architecture, completely blank image.";
 
         const taskUUID = crypto.randomUUID();
+
+        // Juntamos la foto de la habitación con las fotos de los muebles (Máximo 4 imágenes en FLUX)
+        let referenceImages = [imageBase64];
+        if (imagenesMuebles && imagenesMuebles.length > 0) {
+            // Tomamos hasta 3 muebles + 1 de la habitación = 4 imágenes permitidas
+            const miniaturasPermitidas = imagenesMuebles.slice(0, 3);
+            referenceImages = referenceImages.concat(miniaturasPermitidas);
+        }
 
         const requestBody = [
             {
                 "taskType": "imageInference",
                 "taskUUID": taskUUID,
-                "model": "runware:400@4", // FLUX.2 u otro modelo optimizado para generación experta
+                "model": "runware:400@4", 
                 "positivePrompt": positivePrompt,
                 "negativePrompt": negativePrompt,
+                "width": 1024,
+                "height": 1024,
                 "inputs": {
-                    "referenceImages": [imageBase64]
+                    "referenceImages": referenceImages
                 },
                 "steps": 4,
-                "CFGScale": 4.5, // Un poco más alto para que respete rigurosamente la lista de muebles y el rol de experto
+                "CFGScale": 6.5, // Subimos a 6.5 para obligar a la IA a seguir las reglas estrictamente
                 "outputType": "URL",
                 "outputFormat": "JPG",
                 "outputQuality": 95,
