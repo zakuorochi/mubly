@@ -33,19 +33,20 @@ export default async function handler(req, res) {
         const requestBody = [
             {
            const requestBody = [
+          const requestBody = [
             {
                 "taskType": "imageInference",
                 "taskUUID": taskUUID,
                 "model": "runware:108@20", 
                 "positivePrompt": positivePrompt,
                 "negativePrompt": negativePrompt,
-                "width": 1024,   // <--- AÑADE ESTO
-                "height": 768,   // <--- AÑADE ESTO
+                "width": 1024,   // <-- NÚMERO SIN COMILLAS
+                "height": 1024,  // <-- NÚMERO SIN COMILLAS
                 "inputs": {
                     "referenceImages": [imageBase64]
                 },
-                "steps": 8,             // Recomendado para Qwen (según la documentación de precios)
-                "CFGScale": 7,          // Nivel de obediencia estándar para modelos de edición
+                "steps": 8,             
+                "CFGScale": 7,          
                 "outputType": "URL",
                 "outputFormat": "JPG",
                 "outputQuality": 95,
