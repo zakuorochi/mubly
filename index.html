@@ -81,7 +81,7 @@
             width: 100%;
         }
 
-        .action-btn:hover {
+        .action-btn:hover:not(:disabled) {
             border-color: var(--accent-black);
             background-color: #fafafa;
         }
@@ -92,10 +92,19 @@
             border: none;
         }
 
+        .action-btn.primary:hover:not(:disabled) {
+            background-color: #333;
+        }
+        
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .catalog-thumb {
             width: 100%;
             height: 70px;
-            object-fit: contain; /* Ajusta la imagen sin deformarla */
+            object-fit: contain; 
             margin-bottom: 8px;
             border-radius: 4px;
         }
@@ -104,12 +113,8 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
-            pointer-events: none; /* Evita bugs al arrastrar */
-            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3)); /* Le da un ligero toque de realismo 3D */
-        }
-
-        .action-btn.primary:hover {
-            background-color: #333;
+            pointer-events: none; 
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3)); 
         }
 
         /* ZONA CENTRAL (Lienzo) */
@@ -156,9 +161,10 @@
             color: var(--text-muted);
             border: 2px dashed var(--accent-silver);
             transition: all 0.3s ease;
+            overflow: hidden; /* Para que los stickers no se salgan visualmente */
         }
 
-        /* NAVEGADOR DE MARCAS (Simulación Drive) */
+        /* NAVEGADOR DE MARCAS */
         .catalog-container {
             display: flex;
             flex-direction: column;
@@ -255,9 +261,14 @@
     <main class="main-workspace">
         <header class="toolbar">
             <span style="font-size: 14px; font-weight: 500; color: var(--text-muted);">Proyecto sin título</span>
-            <button class="action-btn primary" style="padding: 8px 24px; margin: 0; font-size: 14px;" id="btn-render" disabled>
-                Convertir a Realidad
-            </button>
+            <div style="display: flex; gap: 10px;">
+                <button class="action-btn primary" style="padding: 8px 16px; margin: 0; font-size: 13px;" id="btn-convertir" disabled>
+                    🪄 Conviértelo
+                </button>
+                <button class="action-btn" style="padding: 8px 16px; margin: 0; font-size: 13px; background-color: #f0f0f5;" id="btn-recomendar" disabled>
+                    💡 Recomiéndame
+                </button>
+            </div>
         </header>
 
         <section class="canvas-container">
@@ -271,42 +282,47 @@
     <script type="module">
         // --- CONFIGURACIÓN DE FIREBASE (VÍA VERCEL) ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        let db; // Variable global para la base de datos
+        let db; 
         let catalogoReal = {};
+        
+        // Variables para gestionar la imagen de fondo actual
+        let originalImageBase64 = null; 
+        let backgroundActualUrl = null; 
 
-        // Función para inicializar Firebase pidiendo las claves a Vercel
+        // Elementos de la UI
+        const uploadInput = document.getElementById('upload-room');
+        const canvas = document.getElementById('canvas');
+        const step2 = document.getElementById('step-2');
+        const step3 = document.getElementById('step-3');
+        const btnKeep = document.getElementById('btn-keep');
+        const btnClean = document.getElementById('btn-clean');
+        const btnConvertir = document.getElementById('btn-convertir');
+        const btnRecomendar = document.getElementById('btn-recomendar');
+        const dynamicGrid = document.getElementById('dynamic-grid');
+        const btnBack = document.getElementById('btn-back');
+
         async function iniciarApp() {
             try {
-                // 1. Pedir credenciales a nuestro backend seguro
                 const respuesta = await fetch('/api/config');
-                
-                if (!respuesta.ok) {
-                    throw new Error("No se pudo obtener la configuración de Firebase desde Vercel");
-                }
+                if (!respuesta.ok) throw new Error("No se pudo obtener la configuración de Firebase desde Vercel");
                 
                 const firebaseConfig = await respuesta.json();
-
-                // 2. Inicializar Firebase con esas credenciales
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
 
-                // 3. Ahora que está conectado, cargar el catálogo
                 await cargarCatalogoDesdeFirestore();
-
             } catch (error) {
                 console.error("Error al conectar con la base de datos de Mubly:", error);
             }
         }
 
-        // --- LÓGICA PARA LEER EL CATÁLOGO DESDE FIRESTORE ---
         async function cargarCatalogoDesdeFirestore() {
             try {
                 const marcasSnapshot = await getDocs(collection(db, "marcas"));
                 const mueblesSnapshot = await getDocs(collection(db, "muebles"));
 
-                // 1. Construir la base de las marcas
                 marcasSnapshot.forEach((doc) => {
                     const data = doc.data();
                     if (data.activa) {
@@ -318,7 +334,6 @@
                     }
                 });
 
-                // 2. Poblar los muebles dentro de sus marcas y categorías
                 mueblesSnapshot.forEach((doc) => {
                     const mueble = doc.data();
                     const marcaDoc = marcasSnapshot.docs.find(m => m.id === mueble.marca_id);
@@ -340,34 +355,21 @@
                     }
                 });
 
-                console.log("Catálogo cargado exitosamente desde Firestore", catalogoReal);
-
             } catch (error) {
                 console.error("Error cargando el catálogo:", error);
             }
         }
 
-        // Iniciar todo el proceso de la app
         iniciarApp();
 
-        // --- Lógica Interactiva de la UI ---
-        const uploadInput = document.getElementById('upload-room');
-        const canvas = document.getElementById('canvas');
-        const step2 = document.getElementById('step-2');
-        const step3 = document.getElementById('step-3');
-        const btnKeep = document.getElementById('btn-keep');
-        const btnClean = document.getElementById('btn-clean');
-        const btnRender = document.getElementById('btn-render');
-        const dynamicGrid = document.getElementById('dynamic-grid');
-        const btnBack = document.getElementById('btn-back');
-
-        let originalImageBase64 = null; 
-
+        // --- SUBIDA DE IMAGEN Y PREPARACIÓN ---
         uploadInput.addEventListener('change', function(e) {
             if (e.target.files && e.target.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     originalImageBase64 = event.target.result;
+                    backgroundActualUrl = originalImageBase64; // Inicialmente el fondo es la foto original
+                    
                     canvas.style.backgroundImage = `url(${originalImageBase64})`;
                     canvas.style.backgroundSize = 'cover';
                     canvas.style.backgroundPosition = 'center';
@@ -381,10 +383,7 @@
         });
 
         btnClean.addEventListener('click', async () => {
-            if (!originalImageBase64) {
-                alert("Por favor, sube una foto de tu ambiente primero usando el botón 'Subir foto del ambiente'.");
-                return;
-            }
+            if (!originalImageBase64) return;
 
             btnClean.innerHTML = '⏳ Mubly procesando...';
             btnClean.disabled = true;
@@ -398,12 +397,10 @@
                 });
 
                 const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
 
-                if (!response.ok) {
-                    throw new Error(data.error || 'Error desconocido del servidor');
-                }
-
-                canvas.style.backgroundImage = `url(${data.imageUrl})`;
+                backgroundActualUrl = data.imageUrl; // Actualizamos la URL del fondo a la versión limpia
+                canvas.style.backgroundImage = `url(${backgroundActualUrl})`;
                 canvas.style.filter = 'none';
                 btnClean.innerHTML = '✨ Habitación Limpia';
                 
@@ -422,10 +419,13 @@
 
         function abrirMarcas() {
             step3.style.display = 'flex';
-            btnRender.disabled = false;
+            // Activamos ambos botones de la UI superior
+            btnConvertir.disabled = false;
+            btnRecomendar.disabled = false;
             renderLevel('brands');
         }
 
+        // --- MENÚ DINÁMICO ---
         let currentLevel = 'brands'; 
         let selectedBrand = null;
         let selectedFolder = null;
@@ -482,7 +482,7 @@
                     el.className = 'grid-item draggable';
                     el.draggable = true; 
                     
-                    el.innerHTML = `<img src="${item.image}" alt="${item.name}" class="catalog-thumb"><small>${item.name}</small>`;
+                    el.innerHTML = `<img src="${item.image}" alt="${item.name}" class="catalog-thumb"><small class="item-name">${item.name}</small>`;
                     
                     el.dataset.imgSrc = item.image;
                     el.dataset.precio = item.precio; 
@@ -494,12 +494,15 @@
         }
 
         // --- LÓGICA DE DRAG & DROP (MUEBLES COMO STICKERS) ---
-        let draggedItemSrc = null; 
+        let draggedItemInfo = null; 
 
         dynamicGrid.addEventListener('dragstart', (e) => {
             const item = e.target.closest('.draggable');
             if (item) {
-                draggedItemSrc = item.dataset.imgSrc; 
+                draggedItemInfo = {
+                    src: item.dataset.imgSrc,
+                    name: item.querySelector('.item-name').innerText // Guardamos el nombre para el Experto
+                };
                 e.dataTransfer.setData('text/plain', 'mueble');
                 e.dataTransfer.effectAllowed = 'copy';
             }
@@ -519,17 +522,17 @@
             e.preventDefault();
             canvas.style.borderColor = 'transparent';
 
-            if (draggedItemSrc) {
+            if (draggedItemInfo) {
                 const rect = canvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
 
-                crearStickerFlotante(x, y, draggedItemSrc);
-                draggedItemSrc = null;
+                crearStickerFlotante(x, y, draggedItemInfo);
+                draggedItemInfo = null;
             }
         });
 
-        function crearStickerFlotante(x, y, imgSrc) {
+        function crearStickerFlotante(x, y, info) {
             const floatingBox = document.createElement('div');
             const stickerSize = 120; 
 
@@ -544,7 +547,9 @@
             floatingBox.style.borderRadius = '8px';
             floatingBox.style.cursor = 'move';
             
-            floatingBox.innerHTML = `<img src="${imgSrc}" class="sticker-img">`;
+            // Atributo clave para que la IA sepa qué muebles están en el lienzo
+            floatingBox.dataset.muebleName = info.name; 
+            floatingBox.innerHTML = `<img src="${info.src}" class="sticker-img">`;
 
             hacerMovible(floatingBox);
             canvas.appendChild(floatingBox);
@@ -564,16 +569,12 @@
 
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
-                
                 let newX = e.clientX - startX;
                 let newY = e.clientY - startY;
-
                 const maxLeft = canvas.clientWidth - elemento.clientWidth;
                 const maxTop = canvas.clientHeight - elemento.clientHeight;
-                
                 newX = Math.max(0, Math.min(newX, maxLeft));
                 newY = Math.max(0, Math.min(newY, maxTop));
-
                 elemento.style.left = `${newX}px`;
                 elemento.style.top = `${newY}px`;
             });
@@ -586,6 +587,144 @@
                 }
             });
         }
+
+        // --- LÓGICA DE LA IA (NUEVOS BOTONES) ---
+
+        // Función auxiliar para "fusionar" el fondo y los stickers en una sola imagen (Para 'Conviértelo')
+        function generarImagenCompuesta() {
+            return new Promise((resolve, reject) => {
+                const tempCanvas = document.createElement('canvas');
+                const ctx = tempCanvas.getContext('2d');
+                
+                const bgImg = new Image();
+                bgImg.crossOrigin = "anonymous"; // Evita problemas de CORS al leer la imagen externa
+                
+                bgImg.onload = () => {
+                    tempCanvas.width = bgImg.width;
+                    tempCanvas.height = bgImg.height;
+                    ctx.drawImage(bgImg, 0, 0);
+                    
+                    // Calculamos la proporción entre el div del navegador y la resolución real de la foto
+                    const scaleX = bgImg.width / canvas.clientWidth;
+                    const scaleY = bgImg.height / canvas.clientHeight;
+
+                    const stickers = canvas.querySelectorAll('div > img.sticker-img');
+                    let loadedCount = 0;
+
+                    if(stickers.length === 0) {
+                        resolve(tempCanvas.toDataURL('image/jpeg', 0.9));
+                        return;
+                    }
+
+                    // Dibujamos cada sticker en sus coordenadas exactas
+                    stickers.forEach((imgTag) => {
+                        const parentDiv = imgTag.parentElement;
+                        const sImg = new Image();
+                        sImg.crossOrigin = "anonymous";
+                        sImg.onload = () => {
+                            const rect = parentDiv.getBoundingClientRect();
+                            const canvasRect = canvas.getBoundingClientRect();
+                            
+                            const x = (rect.left - canvasRect.left) * scaleX;
+                            const y = (rect.top - canvasRect.top) * scaleY;
+                            const w = rect.width * scaleX;
+                            const h = rect.height * scaleY;
+
+                            ctx.drawImage(sImg, x, y, w, h);
+                            loadedCount++;
+                            if (loadedCount === stickers.length) resolve(tempCanvas.toDataURL('image/jpeg', 0.9));
+                        };
+                        sImg.onerror = () => { // Si falla una imagen, la omitimos pero continuamos
+                            loadedCount++;
+                            if (loadedCount === stickers.length) resolve(tempCanvas.toDataURL('image/jpeg', 0.9));
+                        };
+                        sImg.src = imgTag.src;
+                    });
+                };
+                bgImg.onerror = reject;
+                bgImg.src = backgroundActualUrl;
+            });
+        }
+
+        // 1. BOTÓN "CONVIÉRTELO" (Respeta coordenadas del usuario)
+        btnConvertir.addEventListener('click', async () => {
+            btnConvertir.innerHTML = '⏳ Fusionando...';
+            btnConvertir.disabled = true;
+            btnRecomendar.disabled = true;
+            canvas.style.filter = 'blur(4px)';
+
+            try {
+                // Generamos la captura plana del lienzo
+                const compositeBase64 = await generarImagenCompuesta();
+                
+                const response = await fetch('/api/convertir-espacio', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imageBase64: compositeBase64 })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+
+                // Reemplazamos el fondo y vaciamos los stickers en modo edición
+                backgroundActualUrl = data.imageUrl;
+                canvas.style.backgroundImage = `url(${backgroundActualUrl})`;
+                canvas.innerHTML = ''; 
+                
+            } catch (error) {
+                alert("Error al procesar: " + error.message);
+            } finally {
+                btnConvertir.innerHTML = '🪄 Conviértelo';
+                btnConvertir.disabled = false;
+                btnRecomendar.disabled = false;
+                canvas.style.filter = 'none';
+            }
+        });
+
+        // 2. BOTÓN "RECOMIÉNDAME" (La IA diseña la distribución)
+        btnRecomendar.addEventListener('click', async () => {
+            btnRecomendar.innerHTML = '⏳ Diseñando...';
+            btnRecomendar.disabled = true;
+            btnConvertir.disabled = true;
+            canvas.style.filter = 'blur(4px)';
+
+            try {
+                // Recopilamos los nombres de los stickers actuales
+                const stickersNodes = canvas.querySelectorAll('div[data-mueble-name]');
+                const nombresMuebles = Array.from(stickersNodes).map(el => el.dataset.muebleName);
+
+                if(nombresMuebles.length === 0) {
+                    alert("Añade al menos un mueble de catálogo al lienzo para que el experto te recomiende una distribución.");
+                    throw new Error("Lienzo vacío");
+                }
+
+                const response = await fetch('/api/recomendar-espacio', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    // Enviamos la habitación tal cual está, y la lista de nombres para que la IA decida dónde ponerlos
+                    body: JSON.stringify({ 
+                        imageBase64: backgroundActualUrl,
+                        mueblesSeleccionados: nombresMuebles 
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+
+                backgroundActualUrl = data.imageUrl; 
+                canvas.style.backgroundImage = `url(${backgroundActualUrl})`;
+                canvas.innerHTML = ''; 
+                
+            } catch (error) {
+                if(error.message !== "Lienzo vacío") alert("Error al procesar: " + error.message);
+            } finally {
+                btnRecomendar.innerHTML = '💡 Recomiéndame';
+                btnRecomendar.disabled = false;
+                btnConvertir.disabled = false;
+                canvas.style.filter = 'none';
+            }
+        });
+
     </script>
 </body>
 </html>
